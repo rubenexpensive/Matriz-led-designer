@@ -2,76 +2,308 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>WS2812B Matrix Designer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WS2812B Multi-Frame Designer</title>
     <style>
-        :root { --bg: #121212; --panel: #1e1e1e; --text: #ffffff; --accent: #00e676; }
-        body { font-family: sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; flex-direction: column; align-items: center; padding: 10px; }
-        .controls { background: var(--panel); padding: 15px; border-radius: 12px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-        .grid-wrapper { overflow-x: auto; background: #000; padding: 10px; border-radius: 8px; max-width: 95vw; border: 2px solid #333; }
-        .grid { display: grid; grid-template-columns: repeat(32, 18px); grid-template-rows: repeat(8, 18px); gap: 2px; }
-        .pixel { width: 18px; height: 18px; background: #222; border-radius: 2px; cursor: pointer; }
-        textarea { width: 90%; max-width: 600px; height: 120px; margin-top: 15px; background: #000; color: var(--accent); border: 1px solid var(--accent); border-radius: 5px; font-family: monospace; font-size: 12px; padding: 10px; }
-        button { padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; background: var(--accent); color: #000; }
+        :root {
+            --bg: #121212;
+            --panel: #1e1e1e;
+            --text: #e0e0e0;
+            --accent: #2196F3;
+            --danger: #f44336;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            margin: 0;
+        }
+
+        .header { text-align: center; margin-bottom: 20px; }
+
+        .toolbar {
+            background: var(--panel);
+            padding: 15px;
+            border-radius: 12px;
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            margin-bottom: 20px;
+        }
+
+        .tool-group { display: flex; align-items: center; gap: 10px; border-right: 1px solid #444; padding-right: 15px; }
+        .tool-group:last-child { border: none; }
+
+        .grid-container {
+            background: #000;
+            padding: 10px;
+            border-radius: 8px;
+            overflow-x: auto;
+            max-width: 95vw;
+            border: 2px solid #333;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(32, 20px);
+            grid-template-rows: repeat(8, 20px);
+            gap: 2px;
+        }
+
+        .pixel {
+            width: 20px;
+            height: 20px;
+            background: #222;
+            border-radius: 2px;
+            cursor: crosshair;
+            transition: 0.1s;
+        }
+
+        .pixel:hover { border: 1px solid white; box-sizing: border-box; }
+
+        .frames-manager {
+            margin: 20px 0;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .frame-indicator {
+            background: var(--accent);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+
+        textarea {
+            width: 100%;
+            max-width: 800px;
+            height: 150px;
+            background: #000;
+            color: #00e676;
+            font-family: monospace;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            margin-top: 10px;
+        }
+
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+
         button:active { transform: scale(0.95); }
-        .btn-clear { background: #ff5252; color: white; }
-        input[type="color"] { width: 40px; height: 40px; border: none; background: none; cursor: pointer; }
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-ghost { background: #444; color: white; }
+        
+        select {
+            padding: 8px;
+            background: #333;
+            color: white;
+            border-radius: 4px;
+            border: 1px solid #555;
+        }
+
+        label { font-size: 0.9em; color: #aaa; }
     </style>
 </head>
 <body>
-    <h3>Diseñador WS2812B (8x32)</h3>
-    <div class="controls">
-        <input type="color" id="colorPicker" value="#00e676">
-        <button onclick="generateCode()">Generar Código</button>
-        <button class="btn-clear" onclick="clearGrid()">Limpiar</button>
+
+    <div class="header">
+        <h2>WS2812B Designer Pro (8x32)</h2>
     </div>
-    <div class="grid-wrapper">
+
+    <div class="toolbar">
+        <div class="tool-group">
+            <label>Color:</label>
+            <input type="color" id="colorPicker" value="#ff0000">
+        </div>
+
+        <div class="tool-group">
+            <label>Modo:</label>
+            <select id="drawMode">
+                <option value="drag">Pincel (Arrastrar)</option>
+                <option value="click">Punto a Punto (Clic)</option>
+            </select>
+        </div>
+
+        <div class="tool-group">
+            <button class="btn-ghost" onclick="clearCurrentFrame()">Limpiar Frame</button>
+            <button class="btn-primary" onclick="generateCode()">Generar Código C</button>
+        </div>
+    </div>
+
+    <div class="frames-manager">
+        <button class="btn-ghost" onclick="prevFrame()">< Anterior</button>
+        <span class="frame-indicator">Cuadro: <span id="frameNum">1</span></span>
+        <button class="btn-ghost" onclick="nextFrame()">Siguiente ></button>
+        <button class="btn-primary" style="background: #4caf50;" onclick="addFrame()">+ Añadir Cuadro</button>
+        <button class="btn-danger" onclick="removeFrame()">Eliminar Cuadro</button>
+    </div>
+
+    <div class="grid-container">
         <div id="grid" class="grid"></div>
     </div>
-    <textarea id="output" readonly placeholder="El código C aparecerá aquí..."></textarea>
-    <p style="font-size: 10px; color: #888;">Tip: Haz clic o arrastra para pintar</p>
+
+    <div style="width: 100%; max-width: 800px; margin-top: 30px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <label>Código Salida:</label>
+            <button class="btn-ghost" style="font-size: 0.8em;" onclick="copyToClipboard()">Copiar Código</button>
+        </div>
+        <textarea id="outputCode" readonly placeholder="El código aparecerá aquí..."></textarea>
+    </div>
 
     <script>
-        const grid = document.getElementById('grid');
-        const colorPicker = document.getElementById('colorPicker');
-        const output = document.getElementById('output');
+        const ROWS = 8;
+        const COLS = 32;
+        let frames = [new Array(ROWS * COLS).fill('#222222')];
+        let currentFrameIdx = 0;
         let isDrawing = false;
 
-        for (let i = 0; i < 256; i++) {
-            const div = document.createElement('div');
-            div.className = 'pixel';
-            div.addEventListener('mousedown', () => { isDrawing = true; paint(div); });
-            div.addEventListener('mouseover', () => { if(isDrawing) paint(div); });
-            div.addEventListener('touchstart', (e) => { isDrawing = true; paint(div); e.preventDefault(); });
-            div.addEventListener('touchmove', (e) => {
-                if(isDrawing) {
-                    const touch = e.touches[0];
-                    const target = document.elementFromPoint(touch.clientX, touch.clientY);
-                    if(target && target.className === 'pixel') paint(target);
-                }
-                e.preventDefault();
-            }, {passive: false});
-            grid.appendChild(div);
+        const grid = document.getElementById('grid');
+        const colorPicker = document.getElementById('colorPicker');
+        const drawMode = document.getElementById('drawMode');
+        const frameNumDisp = document.getElementById('frameNum');
+        const outputCode = document.getElementById('outputCode');
+
+        // Inicializar Matrix
+        function initGrid() {
+            grid.innerHTML = '';
+            for (let i = 0; i < ROWS * COLS; i++) {
+                const pixel = document.createElement('div');
+                pixel.classList.add('pixel');
+                pixel.dataset.index = i;
+                
+                // Eventos
+                pixel.addEventListener('mousedown', (e) => handleStart(e, pixel));
+                pixel.addEventListener('mouseenter', () => handleEnter(pixel));
+                pixel.addEventListener('dblclick', () => erasePixel(pixel));
+                
+                // Touch
+                pixel.addEventListener('touchstart', (e) => { e.preventDefault(); handleStart(e, pixel); });
+
+                grid.appendChild(pixel);
+            }
+            renderFrame();
         }
+
+        function handleStart(e, pixel) {
+            isDrawing = true;
+            paintPixel(pixel);
+        }
+
+        function handleEnter(pixel) {
+            if (isDrawing && drawMode.value === 'drag') {
+                paintPixel(pixel);
+            }
+        }
+
+        function paintPixel(pixel) {
+            const color = colorPicker.value;
+            pixel.style.background = color;
+            pixel.style.boxShadow = `0 0 8px ${color}`;
+            frames[currentFrameIdx][pixel.dataset.index] = color;
+        }
+
+        function erasePixel(pixel) {
+            pixel.style.background = '#222';
+            pixel.style.boxShadow = 'none';
+            frames[currentFrameIdx][pixel.dataset.index] = '#222222';
+        }
+
+        function renderFrame() {
+            const pixels = document.querySelectorAll('.pixel');
+            const data = frames[currentFrameIdx];
+            pixels.forEach((p, i) => {
+                p.style.background = data[i];
+                p.style.boxShadow = data[i] === '#222222' ? 'none' : `0 0 8px ${data[i]}`;
+            });
+            frameNumDisp.innerText = currentFrameIdx + 1;
+        }
+
+        // Gestión de Frames
+        function addFrame() {
+            frames.push(new Array(ROWS * COLS).fill('#222222'));
+            currentFrameIdx = frames.length - 1;
+            renderFrame();
+        }
+
+        function nextFrame() {
+            if (currentFrameIdx < frames.length - 1) {
+                currentFrameIdx++;
+                renderFrame();
+            }
+        }
+
+        function prevFrame() {
+            if (currentFrameIdx > 0) {
+                currentFrameIdx--;
+                renderFrame();
+            }
+        }
+
+        function removeFrame() {
+            if (frames.length > 1) {
+                frames.splice(currentFrameIdx, 1);
+                currentFrameIdx = Math.max(0, currentFrameIdx - 1);
+                renderFrame();
+            }
+        }
+
+        function clearCurrentFrame() {
+            frames[currentFrameIdx].fill('#222222');
+            renderFrame();
+        }
+
+        // Generador de Código
+        function generateCode() {
+            let code = `// Matriz WS2812B - ${frames.length} frames (8x32)\n`;
+            code += `const uint32_t led_animation[${frames.length}][256] = {\n`;
+            
+            frames.forEach((frame, fIdx) => {
+                code += `  { // Frame ${fIdx + 1}\n    `;
+                frame.forEach((color, pIdx) => {
+                    let hex = color.startsWith('rgb') ? rgbToHex(color) : color.replace('#', '0x');
+                    if (hex === '0x222222') hex = '0x000000';
+                    code += hex.toUpperCase() + (pIdx === 255 ? "" : ", ");
+                    if ((pIdx + 1) % 8 === 0 && pIdx !== 255) code += "\n    ";
+                });
+                code += `\n  }${fIdx === frames.length - 1 ? "" : ","}\n`;
+            });
+            
+            code += `};`;
+            outputCode.value = code;
+        }
+
+        function rgbToHex(rgb) {
+            const vals = rgb.match(/\d+/g);
+            return "0x" + vals.map(x => parseInt(x).toString(16).padStart(2, '0')).join('');
+        }
+
+        function copyToClipboard() {
+            outputCode.select();
+            document.execCommand('copy');
+            alert("Código copiado al portapapeles");
+        }
+
         window.addEventListener('mouseup', () => isDrawing = false);
         window.addEventListener('touchend', () => isDrawing = false);
 
-        function paint(el) { el.style.background = colorPicker.value; el.style.boxShadow = `0 0 5px ${colorPicker.value}`; }
-        
-        function clearGrid() { 
-            document.querySelectorAll('.pixel').forEach(p => { p.style.background = '#222'; p.style.boxShadow = 'none'; });
-            output.value = '';
-        }
-
-        function generateCode() {
-            let hexs = Array.from(document.querySelectorAll('.pixel')).map(p => {
-                let rgb = p.style.backgroundColor;
-                if(!rgb || rgb === 'rgb(34, 34, 34)') return '0x000000';
-                let res = rgb.match(/\d+/g).map(x => parseInt(x).toString(16).padStart(2, '0')).join('');
-                return '0x' + res.toUpperCase();
-            });
-            output.value = `const uint32_t matriz[256] = {\n  ${hexs.join(', ')}\n};`;
-        }
+        initGrid();
     </script>
 </body>
 </html>
