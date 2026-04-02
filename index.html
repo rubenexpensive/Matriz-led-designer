@@ -3,188 +3,125 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>WS2812B Designer 8x32 Vertical</title>
+    <title>WS2812B IoT Designer</title>
     <style>
         :root { --bg: #121212; --panel: #1e1e1e; --text: #e0e0e0; --accent: #2196F3; }
         body { font-family: sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; padding: 10px; margin: 0; touch-action: none; }
-        
-        .toolbar { 
-            background: var(--panel); padding: 10px; border-radius: 12px; 
-            display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; 
-            align-items: center; position: sticky; top: 10px; z-index: 100;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5); margin-bottom: 10px; 
-        }
-        
-        .grid-container { 
-            background: #000; padding: 8px; border-radius: 5px; 
-            border: 2px solid #333; margin-bottom: 20px;
-        }
-
-        /* Matriz de 8 columnas x 32 filas */
-        .grid { 
-            display: grid; 
-            grid-template-columns: repeat(8, 25px); 
-            grid-template-rows: repeat(32, 25px); 
-            gap: 2px; 
-        }
-
-        .pixel { width: 25px; height: 25px; background: #222; border-radius: 2px; }
-        
-        @media (max-width: 500px) {
-            .grid { grid-template-columns: repeat(8, 18px); grid-template-rows: repeat(32, 18px); }
-            .pixel { width: 18px; height: 18px; }
-        }
-
-        .controls-bottom { width: 100%; max-width: 500px; }
-        textarea { width: 100%; height: 150px; background: #000; color: #00ff00; font-family: monospace; font-size: 10px; padding: 10px; border: 1px solid #444; }
-        
-        button { padding: 8px 12px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; background: #444; color: white; }
-        button.active { background: var(--accent); }
-        .btn-gen { background: #4caf50; }
+        .toolbar { background: var(--panel); padding: 10px; border-radius: 12px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; align-items: center; position: sticky; top: 10px; z-index: 100; box-shadow: 0 4px 15px rgba(0,0,0,0.5); margin-bottom: 10px; }
+        .grid-container { background: #000; padding: 8px; border-radius: 5px; border: 2px solid #333; margin-bottom: 20px; }
+        .grid { display: grid; grid-template-columns: repeat(8, 22px); grid-template-rows: repeat(32, 22px); gap: 2px; }
+        .pixel { width: 22px; height: 22px; background: #222; border-radius: 2px; }
+        @media (max-width: 500px) { .grid { grid-template-columns: repeat(8, 16px); grid-template-rows: repeat(32, 16px); } .pixel { width: 16px; height: 16px; } }
+        button { padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; background: #444; color: white; }
+        .active { background: var(--accent) !important; }
+        .btn-send { background: #ff9800; color: black; }
         .btn-clear { background: #f44336; }
-        
-        .info { font-size: 11px; color: #888; margin: 5px; text-align: center; }
     </style>
 </head>
 <body>
 
-    <h2 style="margin: 5px;">WS2812B 8x32 (Vertical)</h2>
+    <h2 style="margin: 5px;">IoT LED Matrix (8x32)</h2>
 
     <div class="toolbar">
         <input type="color" id="colorPicker" value="#FF0000" style="height:35px; width:35px;">
-        <button id="brushBtn" class="active" onclick="setTool('brush')">🖌️ Pincel</button>
-        <button id="eraserBtn" onclick="setTool('eraser')">🧽 Borrador</button>
-        <button class="btn-clear" onclick="clearGrid()">Limpiar</button>
-        <button class="btn-gen" onclick="generateCode()">Generar Código</button>
+        <button id="brushBtn" class="active" onclick="window.setTool('brush')">🖌️</button>
+        <button id="eraserBtn" onclick="window.setTool('eraser')">🧽</button>
+        <button class="btn-clear" onclick="window.clearGrid()">Limpiar</button>
+        <button class="btn-send" id="btnSend">🚀 ENVIAR A CASA</button>
     </div>
-
-    <p class="info">Dibuja: Clic o Arrastra | Borra: Doble Clic o Botón Borrador</p>
 
     <div class="grid-container">
         <div id="grid" class="grid"></div>
     </div>
 
-    <div class="controls-bottom">
-        <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom:5px;">
-            <span style="font-size:14px;">Código C:</span>
-            <button onclick="copyCode()" style="font-size:11px;">Copiar</button>
-        </div>
-        <textarea id="output" readonly placeholder="El código aparecerá aquí..."></textarea>
-    </div>
+    <script type="module">
+        // 1. IMPORTAR FIREBASE
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js";
+        import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-database.js";
 
-    <script>
+        // 2. CONFIGURACIÓN (RELLENA ESTO CON TUS DATOS DE FIREBASE)
+        const firebaseConfig = {
+            apiKey: "TU_API_KEY",
+            authDomain: "TU_PROYECTO.firebaseapp.com",
+            databaseURL: "https://TU_PROYECTO-default-rtdb.firebaseio.com",
+            projectId: "TU_PROYECTO",
+            storageBucket: "TU_PROYECTO.appspot.com",
+            messagingSenderId: "ID",
+            appId: "APP_ID"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // Lógica de la Matriz
         const ROWS = 32, COLS = 8;
         let isDrawing = false;
         let currentTool = 'brush';
-        // Matriz de datos de 32 filas x 8 columnas
-        const gridData = Array(ROWS).fill().map(() => Array(COLS).fill('#000000'));
+        const gridData = Array(ROWS).fill().map(() => Array(COLS).fill('000000'));
 
         const gridEl = document.getElementById('grid');
         const colorPicker = document.getElementById('colorPicker');
-        const output = document.getElementById('output');
 
-        function init() {
-            gridEl.innerHTML = '';
-            for (let r = 0; r < ROWS; r++) {
-                for (let c = 0; c < COLS; c++) {
-                    const div = document.createElement('div');
-                    div.className = 'pixel';
-                    div.dataset.r = r;
-                    div.dataset.c = c;
-                    
-                    div.addEventListener('mousedown', (e) => { isDrawing = true; paint(r, c, div); });
-                    div.addEventListener('mouseenter', () => { if(isDrawing) paint(r, c, div); });
-                    div.addEventListener('dblclick', () => { erase(r, c, div); });
-                    
-                    gridEl.appendChild(div);
-                }
+        // Inicializar
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                const div = document.createElement('div');
+                div.className = 'pixel';
+                div.addEventListener('mousedown', () => { isDrawing = true; paint(r, c, div); });
+                div.addEventListener('mouseenter', () => { if(isDrawing) paint(r, c, div); });
+                gridEl.appendChild(div);
             }
         }
 
-        // Soporte Táctil Mejorado
-        document.addEventListener('touchstart', (e) => { 
-            if(e.target.classList.contains('pixel')) {
-                isDrawing = true; 
-                const el = e.target;
-                paint(parseInt(el.dataset.r), parseInt(el.dataset.c), el);
-            }
-        });
-        document.addEventListener('touchend', () => isDrawing = false);
-        document.addEventListener('touchmove', (e) => {
-            if(!isDrawing) return;
-            const t = e.touches[0];
-            const el = document.elementFromPoint(t.clientX, t.clientY);
-            if(el && el.classList.contains('pixel')) {
-                paint(parseInt(el.dataset.r), parseInt(el.dataset.c), el);
-            }
-            e.preventDefault();
-        }, { passive: false });
-
-        window.addEventListener('mouseup', () => isDrawing = false);
-
-        function setTool(t) {
+        window.setTool = (t) => {
             currentTool = t;
             document.getElementById('brushBtn').classList.toggle('active', t === 'brush');
             document.getElementById('eraserBtn').classList.toggle('active', t === 'eraser');
-        }
+        };
 
         function paint(r, c, el) {
-            if(currentTool === 'brush') {
-                const color = colorPicker.value;
-                gridData[r][c] = color;
-                el.style.background = color;
-                el.style.boxShadow = `0 0 5px ${color}`;
-            } else {
-                erase(r, c, el);
-            }
+            const color = currentTool === 'brush' ? colorPicker.value : '#000000';
+            gridData[r][c] = color.replace('#', '');
+            el.style.background = color === '#000000' ? '#222' : color;
         }
 
-        function erase(r, c, el) {
-            gridData[r][c] = '#000000';
-            el.style.background = '#222';
-            el.style.boxShadow = 'none';
-        }
+        window.clearGrid = () => {
+            gridData.forEach(r => r.fill('000000'));
+            document.querySelectorAll('.pixel').forEach(p => p.style.background = '#222');
+        };
 
-        function clearGrid() {
-            gridData.forEach(r => r.fill('#000000'));
-            document.querySelectorAll('.pixel').forEach(p => { 
-                p.style.background = '#222'; 
-                p.style.boxShadow = 'none'; 
-            });
-        }
-
-        function generateCode() {
+        // ENVIAR A FIREBASE
+        document.getElementById('btnSend').onclick = async () => {
+            const btn = document.getElementById('btnSend');
+            btn.innerText = "ENVIANDO...";
+            
             let finalArray = [];
-
             for (let r = 0; r < ROWS; r++) {
-                let rowData = [...gridData[r]];
-                // Zigzag cada 8 LEDs (si r es impar 1, 3, 5... invertimos los 8 leds de esa fila)
-                if (r % 2 !== 0) {
-                    rowData.reverse();
-                }
-                finalArray.push(...rowData);
+                let row = [...gridData[r]];
+                if (r % 2 !== 0) row.reverse(); // Lógica ZigZag
+                finalArray.push(...row);
             }
 
-            let cCode = `// Matriz 8x32 Vertical (Zigzag cada 8 LEDs)\n`;
-            cCode += `const uint32_t matriz[256] = {\n`;
-            
-            for (let i = 0; i < finalArray.length; i++) {
-                let hex = finalArray[i].replace('#', '0x').toUpperCase();
-                cCode += hex + (i === 255 ? "" : ", ");
-                if ((i + 1) % 8 === 0) cCode += "\n"; // Salto de línea cada 8 leds para legibilidad
+            try {
+                await set(ref(db, 'matriz'), finalArray.join(','));
+                alert("¡Diseño enviado! Tu ESP32 lo recibirá en segundos.");
+            } catch (e) {
+                alert("Error: " + e.message);
             }
-            
-            cCode += `};`;
-            output.value = cCode;
-        }
+            btn.innerText = "🚀 ENVIAR A CASA";
+        };
 
-        function copyCode() {
-            output.select();
-            document.execCommand('copy');
-            alert("Código copiado al portapapeles");
-        }
-
-        init();
+        window.addEventListener('mouseup', () => isDrawing = false);
+        // Soporte táctil simplificado
+        gridEl.addEventListener('touchmove', (e) => {
+            const t = e.touches[0];
+            const el = document.elementFromPoint(t.clientX, t.clientY);
+            if(el && el.classList.contains('pixel')) {
+                const r = Array.from(gridEl.children).indexOf(el);
+                paint(Math.floor(r/8), r%8, el);
+            }
+            e.preventDefault();
+        }, {passive: false});
     </script>
 </body>
 </html>
