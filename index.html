@@ -3,72 +3,86 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>WS2812B Matrix Designer 8x32</title>
+    <title>WS2812B Designer 8x32 Vertical</title>
     <style>
         :root { --bg: #121212; --panel: #1e1e1e; --text: #e0e0e0; --accent: #2196F3; }
         body { font-family: sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; padding: 10px; margin: 0; touch-action: none; }
         
-        .toolbar { background: var(--panel); padding: 15px; border-radius: 12px; display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; align-items: center; box-shadow: 0 4px 15px rgba(0,0,0,0.5); margin-bottom: 10px; }
+        .toolbar { 
+            background: var(--panel); padding: 10px; border-radius: 12px; 
+            display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; 
+            align-items: center; position: sticky; top: 10px; z-index: 100;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5); margin-bottom: 10px; 
+        }
         
-        .grid-container { background: #000; padding: 10px; border-radius: 8px; overflow-x: auto; max-width: 98vw; border: 2px solid #333; cursor: crosshair; }
-        .grid { display: grid; grid-template-columns: repeat(32, 18px); grid-template-rows: repeat(8, 18px); gap: 2px; }
-        .pixel { width: 18px; height: 18px; background: #222; border-radius: 2px; }
-        
-        @media (max-width: 700px) {
-            .grid { grid-template-columns: repeat(32, 11px); grid-template-rows: repeat(8, 11px); }
-            .pixel { width: 11px; height: 11px; }
+        .grid-container { 
+            background: #000; padding: 8px; border-radius: 5px; 
+            border: 2px solid #333; margin-bottom: 20px;
         }
 
-        .controls-bottom { width: 100%; max-width: 900px; margin-top: 15px; }
-        textarea { width: 100%; height: 180px; background: #000; color: #00ff00; font-family: monospace; font-size: 10px; padding: 10px; border: 1px solid #444; }
+        /* Matriz de 8 columnas x 32 filas */
+        .grid { 
+            display: grid; 
+            grid-template-columns: repeat(8, 25px); 
+            grid-template-rows: repeat(32, 25px); 
+            gap: 2px; 
+        }
+
+        .pixel { width: 25px; height: 25px; background: #222; border-radius: 2px; }
         
-        button { padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; background: #444; color: white; }
+        @media (max-width: 500px) {
+            .grid { grid-template-columns: repeat(8, 18px); grid-template-rows: repeat(32, 18px); }
+            .pixel { width: 18px; height: 18px; }
+        }
+
+        .controls-bottom { width: 100%; max-width: 500px; }
+        textarea { width: 100%; height: 150px; background: #000; color: #00ff00; font-family: monospace; font-size: 10px; padding: 10px; border: 1px solid #444; }
+        
+        button { padding: 8px 12px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; background: #444; color: white; }
         button.active { background: var(--accent); }
         .btn-gen { background: #4caf50; }
         .btn-clear { background: #f44336; }
         
-        .option-group { display: flex; align-items: center; gap: 5px; background: #333; padding: 8px 12px; border-radius: 5px; font-size: 13px; }
+        .info { font-size: 11px; color: #888; margin: 5px; text-align: center; }
     </style>
 </head>
 <body>
 
-    <h2 style="margin: 10px;">WS2812B Designer 8x32</h2>
+    <h2 style="margin: 5px;">WS2812B 8x32 (Vertical)</h2>
 
     <div class="toolbar">
-        <input type="color" id="colorPicker" value="#FF0000">
+        <input type="color" id="colorPicker" value="#FF0000" style="height:35px; width:35px;">
         <button id="brushBtn" class="active" onclick="setTool('brush')">🖌️ Pincel</button>
         <button id="eraserBtn" onclick="setTool('eraser')">🧽 Borrador</button>
-        <div class="option-group">
-            <input type="checkbox" id="zigzag" checked>
-            <label for="zigzag">Matriz Zig-Zag</label>
-        </div>
         <button class="btn-clear" onclick="clearGrid()">Limpiar</button>
         <button class="btn-gen" onclick="generateCode()">Generar Código</button>
     </div>
+
+    <p class="info">Dibuja: Clic o Arrastra | Borra: Doble Clic o Botón Borrador</p>
 
     <div class="grid-container">
         <div id="grid" class="grid"></div>
     </div>
 
     <div class="controls-bottom">
-        <div style="display:flex; justify-content: space-between; margin-bottom:5px;">
-            <span>Código C (Variable Matriz):</span>
-            <button onclick="copyCode()" style="padding: 2px 10px;">Copiar</button>
+        <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom:5px;">
+            <span style="font-size:14px;">Código C:</span>
+            <button onclick="copyCode()" style="font-size:11px;">Copiar</button>
         </div>
-        <textarea id="output" readonly placeholder="Dibuja algo y pulsa Generar Código..."></textarea>
+        <textarea id="output" readonly placeholder="El código aparecerá aquí..."></textarea>
     </div>
 
     <script>
-        const ROWS = 8, COLS = 32;
+        const ROWS = 32, COLS = 8;
         let isDrawing = false;
         let currentTool = 'brush';
+        // Matriz de datos de 32 filas x 8 columnas
         const gridData = Array(ROWS).fill().map(() => Array(COLS).fill('#000000'));
 
         const gridEl = document.getElementById('grid');
         const colorPicker = document.getElementById('colorPicker');
         const output = document.getElementById('output');
 
-        // Inicializar grid visual
         function init() {
             gridEl.innerHTML = '';
             for (let r = 0; r < ROWS; r++) {
@@ -78,15 +92,23 @@
                     div.dataset.r = r;
                     div.dataset.c = c;
                     
-                    div.addEventListener('mousedown', () => { isDrawing = true; paint(r, c, div); });
+                    div.addEventListener('mousedown', (e) => { isDrawing = true; paint(r, c, div); });
                     div.addEventListener('mouseenter', () => { if(isDrawing) paint(r, c, div); });
+                    div.addEventListener('dblclick', () => { erase(r, c, div); });
+                    
                     gridEl.appendChild(div);
                 }
             }
         }
 
-        // Soporte Táctil (Móviles)
-        document.addEventListener('touchstart', (e) => { if(e.target.classList.contains('pixel')) isDrawing = true; });
+        // Soporte Táctil Mejorado
+        document.addEventListener('touchstart', (e) => { 
+            if(e.target.classList.contains('pixel')) {
+                isDrawing = true; 
+                const el = e.target;
+                paint(parseInt(el.dataset.r), parseInt(el.dataset.c), el);
+            }
+        });
         document.addEventListener('touchend', () => isDrawing = false);
         document.addEventListener('touchmove', (e) => {
             if(!isDrawing) return;
@@ -107,37 +129,49 @@
         }
 
         function paint(r, c, el) {
-            const color = currentTool === 'brush' ? colorPicker.value : '#000000';
-            gridData[r][c] = color;
-            el.style.background = color === '#000000' ? '#222' : color;
-            el.style.boxShadow = color === '#000000' ? 'none' : `0 0 5px ${color}`;
+            if(currentTool === 'brush') {
+                const color = colorPicker.value;
+                gridData[r][c] = color;
+                el.style.background = color;
+                el.style.boxShadow = `0 0 5px ${color}`;
+            } else {
+                erase(r, c, el);
+            }
+        }
+
+        function erase(r, c, el) {
+            gridData[r][c] = '#000000';
+            el.style.background = '#222';
+            el.style.boxShadow = 'none';
         }
 
         function clearGrid() {
             gridData.forEach(r => r.fill('#000000'));
-            document.querySelectorAll('.pixel').forEach(p => { p.style.background = '#222'; p.style.boxShadow = 'none'; });
+            document.querySelectorAll('.pixel').forEach(p => { 
+                p.style.background = '#222'; 
+                p.style.boxShadow = 'none'; 
+            });
         }
 
         function generateCode() {
-            const isZigZag = document.getElementById('zigzag').checked;
             let finalArray = [];
 
             for (let r = 0; r < ROWS; r++) {
                 let rowData = [...gridData[r]];
-                // Si es Zig-Zag y la fila es impar (1, 3, 5, 7), invertimos el orden
-                if (isZigZag && r % 2 !== 0) {
+                // Zigzag cada 8 LEDs (si r es impar 1, 3, 5... invertimos los 8 leds de esa fila)
+                if (r % 2 !== 0) {
                     rowData.reverse();
                 }
                 finalArray.push(...rowData);
             }
 
-            let cCode = `// Matriz 8x32 (${isZigZag ? 'Zig-Zag' : 'Progresiva'})\n`;
+            let cCode = `// Matriz 8x32 Vertical (Zigzag cada 8 LEDs)\n`;
             cCode += `const uint32_t matriz[256] = {\n`;
             
             for (let i = 0; i < finalArray.length; i++) {
                 let hex = finalArray[i].replace('#', '0x').toUpperCase();
                 cCode += hex + (i === 255 ? "" : ", ");
-                if ((i + 1) % 32 === 0) cCode += "\n"; // Salto de línea cada 32 para ver el dibujo
+                if ((i + 1) % 8 === 0) cCode += "\n"; // Salto de línea cada 8 leds para legibilidad
             }
             
             cCode += `};`;
@@ -147,7 +181,7 @@
         function copyCode() {
             output.select();
             document.execCommand('copy');
-            alert("Código copiado");
+            alert("Código copiado al portapapeles");
         }
 
         init();
