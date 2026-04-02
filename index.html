@@ -3,64 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>IoT Vertical Matrix</title>
+    <title>IoT Matrix LED</title>
     <style>
         :root { --bg: #121212; --panel: #1e1e1e; --accent: #2196F3; }
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            background: var(--bg); 
-            color: white; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            margin: 0; 
-            padding: 10px; 
-            touch-action: none; 
-        }
-        .toolbar { 
-            background: var(--panel); 
-            padding: 15px; 
-            border-radius: 15px; 
-            display: flex; 
-            gap: 15px; 
-            margin-bottom: 20px; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
-            position: sticky;
-            top: 10px;
-            z-index: 100;
-        }
-        /* Ajuste de la cuadrícula a Vertical */
-        .grid { 
-            display: grid; 
-            grid-template-columns: repeat(8, 30px); /* 8 columnas fijas */
-            grid-template-rows: repeat(32, 30px);   /* 32 filas fijas */
-            gap: 3px; 
-            background: #000; 
-            padding: 8px; 
-            border: 2px solid #333; 
-            border-radius: 5px;
-        }
-        .pixel { 
-            width: 30px; 
-            height: 30px; 
-            background: #222; 
-            border-radius: 3px; 
-            transition: background 0.1s;
-        }
-        button { padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1.1rem; }
-        .btn-send { background: #ff9800; color: black; flex-grow: 1; }
+        body { font-family: sans-serif; background: var(--bg); color: white; display: flex; flex-direction: column; align-items: center; margin: 0; padding: 10px; touch-action: none; }
+        .toolbar { background: var(--panel); padding: 10px; border-radius: 10px; display: flex; gap: 10px; margin-bottom: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        .grid { display: grid; grid-template-columns: repeat(8, 22px); grid-template-rows: repeat(32, 22px); gap: 2px; background: #000; padding: 5px; border: 1px solid #444; }
+        .pixel { width: 22px; height: 22px; background: #222; border-radius: 2px; }
+        button { padding: 10px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .btn-send { background: #ff9800; color: black; }
         .btn-clear { background: #f44336; color: white; }
-        input[type="color"] { width: 45px; height: 45px; border: none; background: none; cursor: pointer; }
-        .active { border: 2px solid white; outline: 2px solid var(--accent); }
-
-        /* Media query para pantallas pequeñas */
-        @media (max-height: 800px) {
-            .grid { 
-                grid-template-columns: repeat(8, 22px); 
-                grid-template-rows: repeat(32, 22px); 
-            }
-            .pixel { width: 22px; height: 22px; }
-        }
+        .active { border: 2px solid white; }
     </style>
 </head>
 <body>
@@ -69,7 +22,7 @@
         <input type="color" id="colorPicker" value="#00FF00">
         <button id="brushBtn" class="active" onclick="setTool('brush')">🖌️</button>
         <button id="eraserBtn" onclick="setTool('eraser')">🧽</button>
-        <button class="btn-clear" onclick="clearGrid()">🗑️</button>
+        <button class="btn-clear" onclick="clearGrid()">Limpiar</button>
         <button class="btn-send" id="btnSend">🚀 ENVIAR</button>
     </div>
 
@@ -80,13 +33,13 @@
         import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-database.js";
 
         const firebaseConfig = {
-            apiKey: "AIzaSyCN598AmKYjlOfyiacikZCEUT-NuwCZkXk",
-            authDomain: "matrix-led-8x32.firebaseapp.com",
-            databaseURL: "https://matrix-led-8x32-default-rtdb.firebaseio.com",
-            projectId: "matrix-led-8x32",
-            storageBucket: "matrix-led-8x32.firebasestorage.app",
-            messagingSenderId: "624915919354",
-            appId: "1:624915919354:web:779fda6cefd0c669a6b443"
+          apiKey: "AIzaSyCN598AmKYjlOfyiacikZCEUT-NuwCZkXk",
+          authDomain: "matrix-led-8x32.firebaseapp.com",
+          databaseURL: "https://matrix-led-8x32-default-rtdb.firebaseio.com",
+          projectId: "matrix-led-8x32",
+          storageBucket: "matrix-led-8x32.firebasestorage.app",
+          messagingSenderId: "624915919354",
+          appId: "1:624915919354:web:779fda6cefd0c669a6b443"
         };
 
         const app = initializeApp(firebaseConfig);
@@ -95,75 +48,65 @@
         const ROWS = 32, COLS = 8;
         let isDrawing = false;
         let currentTool = 'brush';
+        // Inicializar array con negro
         let gridData = Array(ROWS * COLS).fill('000000');
 
         const gridEl = document.getElementById('grid');
         const colorPicker = document.getElementById('colorPicker');
 
-        // Crear Grid Vertical
+        // Crear Grid
         for (let i = 0; i < ROWS * COLS; i++) {
             const div = document.createElement('div');
             div.className = 'pixel';
             div.dataset.index = i;
-            
-            // Eventos Mouse
-            div.addEventListener('mousedown', (e) => { isDrawing = true; paint(i, div); });
+            div.addEventListener('mousedown', () => { isDrawing = true; paint(i, div); });
             div.addEventListener('mouseenter', () => { if(isDrawing) paint(i, div); });
             gridEl.appendChild(div);
         }
 
         window.setTool = (t) => {
             currentTool = t;
-            document.getElementById('brushBtn').classList.toggle('active', t === 'brush');
-            document.getElementById('eraserBtn').classList.toggle('active', t === 'eraser');
+            document.getElementById('brushBtn').className = t === 'brush' ? 'active' : '';
+            document.getElementById('eraserBtn').className = t === 'eraser' ? 'active' : '';
         };
 
         function paint(index, el) {
             const color = currentTool === 'brush' ? colorPicker.value : '#000000';
             const cleanColor = color.replace('#', '').toLowerCase();
-            gridData[index] = cleanColor;
+            gridData[index] = cleanColor; // Guardar en el array
             el.style.backgroundColor = color === '#000000' ? '#222' : color;
         }
 
         window.clearGrid = () => {
-            if(confirm("¿Limpiar todo el diseño?")) {
-                gridData.fill('000000');
-                document.querySelectorAll('.pixel').forEach(p => p.style.backgroundColor = '#222');
-            }
+            gridData.fill('000000');
+            document.querySelectorAll('.pixel').forEach(p => p.style.backgroundColor = '#222');
         };
 
         document.getElementById('btnSend').onclick = async () => {
             const btn = document.getElementById('btnSend');
-            const originalText = btn.innerText;
             btn.innerText = "⌛...";
-            btn.disabled = true;
             
-            // Procesar ZigZag para matriz física (8 de ancho)
+            // Procesar ZigZag antes de enviar
             let zigzagData = [];
             for (let r = 0; r < ROWS; r++) {
                 let row = gridData.slice(r * COLS, (r + 1) * COLS);
-                // Si la fila es impar, invertimos el orden para el cableado físico
-                if (r % 2 !== 0) row.reverse(); 
+                if (r % 2 !== 0) row.reverse(); // Invertir filas impares
                 zigzagData.push(...row);
             }
 
             try {
                 await set(ref(db, 'matriz'), zigzagData.join(','));
+                console.log("Enviado a Firebase con éxito");
                 btn.innerText = "✅ OK";
-                setTimeout(() => { 
-                    btn.innerText = originalText;
-                    btn.disabled = false;
-                }, 2000);
+                setTimeout(() => btn.innerText = "🚀 ENVIAR", 2000);
             } catch (e) {
                 alert("Error: " + e.message);
-                btn.innerText = "🚀 ERROR";
-                btn.disabled = false;
+                btn.innerText = "🚀 ENVIAR";
             }
         };
 
         window.addEventListener('mouseup', () => isDrawing = false);
-
-        // Soporte Touch mejorado para dibujo fluido
+        // Soporte Touch
         gridEl.addEventListener('touchmove', (e) => {
             const t = e.touches[0];
             const el = document.elementFromPoint(t.clientX, t.clientY);
@@ -172,9 +115,8 @@
             }
             e.preventDefault();
         }, {passive: false});
-        gridEl.addEventListener('touchstart', () => isDrawing = true);
+        gridEl.addEventListener('touchstart', (e) => isDrawing = true);
         gridEl.addEventListener('touchend', () => isDrawing = false);
-
     </script>
 </body>
 </html>
