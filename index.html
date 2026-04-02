@@ -3,12 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>IoT Matrix LED</title>
+    <title>IoT Matrix LED - Visual Horizontal</title>
     <style>
         :root { --bg: #121212; --panel: #1e1e1e; --accent: #2196F3; }
         body { font-family: sans-serif; background: var(--bg); color: white; display: flex; flex-direction: column; align-items: center; margin: 0; padding: 10px; touch-action: none; }
-        .toolbar { background: var(--panel); padding: 10px; border-radius: 10px; display: flex; gap: 10px; margin-bottom: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
-        .grid { display: grid; grid-template-columns: repeat(8, 22px); grid-template-rows: repeat(32, 22px); gap: 2px; background: #000; padding: 5px; border: 1px solid #444; }
+        .toolbar { background: var(--panel); padding: 10px; border-radius: 10px; display: flex; gap: 10px; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        
+        /* CAMBIO VISUAL: Invertimos filas y columnas solo en el CSS */
+        .grid { 
+            display: grid; 
+            /* Visualmente: 32 columnas y 8 filas */
+            grid-template-columns: repeat(32, 22px); 
+            grid-template-rows: repeat(8, 22px); 
+            gap: 2px; 
+            background: #000; 
+            padding: 5px; 
+            border: 1px solid #444;
+            /* Opcional: Centrar si la pantalla es pequeña */
+            overflow-x: auto;
+            max-width: 95vw;
+        }
+
         .pixel { width: 22px; height: 22px; background: #222; border-radius: 2px; }
         button { padding: 10px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
         .btn-send { background: #ff9800; color: black; }
@@ -45,16 +60,16 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
+        // Mantenemos la lógica interna de 32 de largo y 8 de ancho
         const ROWS = 32, COLS = 8;
         let isDrawing = false;
         let currentTool = 'brush';
-        // Inicializar array con negro
         let gridData = Array(ROWS * COLS).fill('000000');
 
         const gridEl = document.getElementById('grid');
         const colorPicker = document.getElementById('colorPicker');
 
-        // Crear Grid
+        // Mantenemos el orden de creación para que el índice coincida con la lógica de envío
         for (let i = 0; i < ROWS * COLS; i++) {
             const div = document.createElement('div');
             div.className = 'pixel';
@@ -73,7 +88,7 @@
         function paint(index, el) {
             const color = currentTool === 'brush' ? colorPicker.value : '#000000';
             const cleanColor = color.replace('#', '').toLowerCase();
-            gridData[index] = cleanColor; // Guardar en el array
+            gridData[index] = cleanColor;
             el.style.backgroundColor = color === '#000000' ? '#222' : color;
         }
 
@@ -86,17 +101,16 @@
             const btn = document.getElementById('btnSend');
             btn.innerText = "⌛...";
             
-            // Procesar ZigZag antes de enviar
+            // LA LÓGICA DE ENVÍO SIGUE SIENDO LA MISMA (No se rompe)
             let zigzagData = [];
             for (let r = 0; r < ROWS; r++) {
                 let row = gridData.slice(r * COLS, (r + 1) * COLS);
-                if (r % 2 !== 0) row.reverse(); // Invertir filas impares
+                if (r % 2 !== 0) row.reverse(); 
                 zigzagData.push(...row);
             }
 
             try {
                 await set(ref(db, 'matriz'), zigzagData.join(','));
-                console.log("Enviado a Firebase con éxito");
                 btn.innerText = "✅ OK";
                 setTimeout(() => btn.innerText = "🚀 ENVIAR", 2000);
             } catch (e) {
@@ -106,7 +120,6 @@
         };
 
         window.addEventListener('mouseup', () => isDrawing = false);
-        // Soporte Touch
         gridEl.addEventListener('touchmove', (e) => {
             const t = e.touches[0];
             const el = document.elementFromPoint(t.clientX, t.clientY);
